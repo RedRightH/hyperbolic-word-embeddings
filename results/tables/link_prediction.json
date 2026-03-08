@@ -1,0 +1,16 @@
+{
+  "euclidean": {
+    "mean_rank": 838.785,
+    "median_rank": 965.0,
+    "hits@1": 0.0,
+    "hits@5": 0.0,
+    "hits@10": 0.005
+  },
+  "poincare": {
+    "mean_rank": 350.98,
+    "median_rank": 297.5,
+    "hits@1": 0.0,
+    "hits@5": 0.0,
+    "hits@10": 0.005
+  }
+}

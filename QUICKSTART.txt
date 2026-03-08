@@ -1,0 +1,148 @@
+================================================================================
+HYPERBOLIC VS EUCLIDEAN WORD EMBEDDINGS - QUICK START
+================================================================================
+
+PROJECT LOCATION:
+C:\Users\suchi\AIMasterClass\NLP course project
+
+================================================================================
+INSTALLATION (First Time Setup)
+================================================================================
+
+1. Open terminal/command prompt in project directory
+
+2. Create virtual environment (recommended):
+   python -m venv venv
+   venv\Scripts\activate
+
+3. Install dependencies:
+   pip install -r requirements.txt
+
+4. Test installation:
+   python INSTALLATION_TEST.py
+
+5. Download WordNet data:
+   python data/download_wordnet.py
+
+================================================================================
+RUNNING THE PROJECT
+================================================================================
+
+OPTION 1: Quick Demo (5 minutes)
+---------------------------------
+python quick_demo.py
+
+This runs a fast demo with small dataset to verify everything works.
+
+
+OPTION 2: Full Pipeline (30-60 minutes)
+----------------------------------------
+python run_full_pipeline.py
+
+This runs the complete experiment with full dataset and evaluation.
+
+
+OPTION 3: Step-by-Step (Manual Control)
+----------------------------------------
+# Extract data
+python src/preprocessing/extract_wordnet.py
+python src/preprocessing/build_hierarchy.py
+
+# Train models
+python src/training/train_euclidean.py
+python src/training/train_hyperbolic.py
+
+# Evaluate
+python src/evaluation/reconstruction_error.py
+python src/evaluation/link_prediction.py
+
+# Generate validation visualizations
+python src/visualization/validate_hierarchy.py
+python src/visualization/validate_separation.py
+
+
+================================================================================
+WHAT THIS PROJECT DOES
+================================================================================
+
+1. Extracts hierarchical relationships from WordNet (hypernyms)
+2. Trains two types of embeddings:
+   - Euclidean (Word2Vec) - 100 dimensions
+   - Poincaré (Hyperbolic) - 10 dimensions
+3. Evaluates both models on:
+   - Reconstruction error (preserving graph distances)
+   - Link prediction (predicting missing relationships)
+4. Generates visualizations comparing both approaches
+
+KEY FINDING: Poincaré embeddings achieve better results with 10x fewer 
+dimensions, demonstrating the efficiency of hyperbolic geometry for 
+hierarchical data.
+
+================================================================================
+OUTPUT FILES
+================================================================================
+
+After running, check these directories:
+
+results/trained_models/
+  - euclidean_embeddings.pkl
+  - poincare_embeddings.pkl
+
+results/tables/
+  - reconstruction_error.json
+  - link_prediction.json
+
+results/figures/
+  - validation_euclidean_correlation.png
+  - validation_poincare_correlation.png
+  - validation_euclidean_parent_child.png
+  - validation_poincare_parent_child.png
+  - validation_euclidean_depth_norm.png
+  - validation_poincare_depth_norm.png
+  - validation_comparison_summary.png
+  - validation_normalized_separation.png
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: "NLTK WordNet not found"
+Solution: python data/download_wordnet.py
+
+Problem: "Module not found"
+Solution: pip install -r requirements.txt
+
+Problem: Training is slow
+Solution: Reduce dataset size in extract_wordnet.py (set limit=5000)
+
+Problem: Out of memory
+Solution: Reduce batch_size in src/utils/config.py
+
+================================================================================
+DOCUMENTATION
+================================================================================
+
+README.md              - Comprehensive project documentation
+GETTING_STARTED.md     - Detailed setup and usage guide
+PROJECT_SUMMARY.md     - Technical overview and architecture
+LICENSE                - MIT License with academic citation
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. Run: python INSTALLATION_TEST.py
+2. Run: python quick_demo.py
+3. Read: README.md for detailed information
+4. Generate validation visualizations
+
+================================================================================
+SUPPORT
+================================================================================
+
+For issues or questions:
+1. Check GETTING_STARTED.md troubleshooting section
+2. Review error messages carefully
+3. Verify installation with INSTALLATION_TEST.py
+
+================================================================================
