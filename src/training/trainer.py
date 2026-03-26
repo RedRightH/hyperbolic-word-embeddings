@@ -3,7 +3,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from src.preprocessing.dataset_utils import load_graph, create_train_test_split, create_node_to_id_mapping, save_split, save_mapping
 
-def prepare_training_data(edges_filename="wordnet_edges.txt", test_split=0.2, seed=42):
+def prepare_training_data(edges_filename="wordnet_edges.txt", test_split=0.2, seed=42, dataset_prefix=None):
     """
     Prepare training data by loading graph and creating train/test split.
     
@@ -39,10 +39,21 @@ def prepare_training_data(edges_filename="wordnet_edges.txt", test_split=0.2, se
     
     all_edges = train_edges + test_edges
     node2id, id2node = create_node_to_id_mapping(all_edges)
-    
-    save_split(train_edges, test_edges)
-    save_mapping(node2id, id2node)
-    
+
+    if dataset_prefix:
+        train_file = f"{dataset_prefix}_train_edges.pkl"
+        test_file = f"{dataset_prefix}_test_edges.pkl"
+        node2id_file = f"{dataset_prefix}_node2id.pkl"
+        id2node_file = f"{dataset_prefix}_id2node.pkl"
+    else:
+        train_file = "train_edges.pkl"
+        test_file = "test_edges.pkl"
+        node2id_file = "node2id.pkl"
+        id2node_file = "id2node.pkl"
+
+    save_split(train_edges, test_edges, train_file=train_file, test_file=test_file)
+    save_mapping(node2id, id2node, node2id_file=node2id_file, id2node_file=id2node_file)
+
     return train_edges, test_edges, node2id, id2node
 
 if __name__ == "__main__":

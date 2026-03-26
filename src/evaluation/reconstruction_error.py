@@ -8,8 +8,9 @@ from src.preprocessing.dataset_utils import load_graph, load_mapping
 from src.utils.config import MODELS_DIR, TABLES_DIR
 from src.utils.distance_metrics import compute_distance_batch
 from src.evaluation.metrics import compute_reconstruction_error
+import argparse
 
-def evaluate_reconstruction(model_path, model_type='euclidean'):
+def evaluate_reconstruction(model_path, model_type='euclidean', graph_filename=None):
     """
     Evaluate reconstruction error for a trained model.
     
@@ -33,7 +34,7 @@ def evaluate_reconstruction(model_path, model_type='euclidean'):
     
     # Load the graph to compute actual tree distances
     try:
-        G = load_graph()
+        G = load_graph(graph_filename) if graph_filename else load_graph()
     except FileNotFoundError:
         print("Graph not found. Building from edges...")
         from src.preprocessing.build_hierarchy import build_and_save_hierarchy
@@ -112,7 +113,7 @@ def evaluate_reconstruction(model_path, model_type='euclidean'):
     
     return metrics
 
-def compare_reconstruction_errors():
+def compare_reconstruction_errors(dataset_prefix=None):
     """
     Compare reconstruction errors between Euclidean and Poincaré models.
     """
@@ -120,13 +121,18 @@ def compare_reconstruction_errors():
     print("Comparing Reconstruction Errors")
     print("=" * 60)
     
-    euclidean_path = MODELS_DIR / "euclidean_embeddings.pkl"
-    poincare_path = MODELS_DIR / "poincare_embeddings.pkl"
+    euclidean_filename = f"{dataset_prefix}_euclidean_embeddings.pkl" if dataset_prefix else "euclidean_embeddings.pkl"
+    poincare_filename = f"{dataset_prefix}_poincare_embeddings.pkl" if dataset_prefix else "poincare_embeddings.pkl"
+
+    euclidean_path = MODELS_DIR / euclidean_filename
+    poincare_path = MODELS_DIR / poincare_filename
+
+    graph_filename = f"{dataset_prefix}_graph.pkl" if dataset_prefix else None
     
     results = {}
     
     if euclidean_path.exists():
-        euclidean_metrics = evaluate_reconstruction(euclidean_path, 'euclidean')
+        euclidean_metrics = evaluate_reconstruction(euclidean_path, 'euclidean', graph_filename=graph_filename)
         results['euclidean'] = euclidean_metrics
     else:
         print(f"Euclidean model not found: {euclidean_path}")
@@ -134,12 +140,13 @@ def compare_reconstruction_errors():
     print("\n" + "-" * 60 + "\n")
     
     if poincare_path.exists():
-        poincare_metrics = evaluate_reconstruction(poincare_path, 'poincare')
+        poincare_metrics = evaluate_reconstruction(poincare_path, 'poincare', graph_filename=graph_filename)
         results['poincare'] = poincare_metrics
     else:
         print(f"Poincaré model not found: {poincare_path}")
     
-    output_path = TABLES_DIR / "reconstruction_error.json"
+    output_filename = f"{dataset_prefix}_reconstruction_error.json" if dataset_prefix else "reconstruction_error.json"
+    output_path = TABLES_DIR / output_filename
     with open(output_path, 'w') as f:
         json.dump(results, f, indent=2)
     
@@ -167,4 +174,8 @@ def compare_reconstruction_errors():
     return results
 
 if __name__ == "__main__":
-    compare_reconstruction_errors()
+    parser = argparse.ArgumentParser(description='Compare reconstruction errors')
+    parser.add_argument('--dataset-prefix', type=str, default=None, help='Dataset prefix (uses prefixed processed artifacts and models)')
+    args = parser.parse_args()
+
+    compare_reconstruction_errors(dataset_prefix=args.dataset_prefix)

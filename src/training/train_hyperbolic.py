@@ -6,7 +6,7 @@ from src.preprocessing.dataset_utils import load_split, load_mapping
 from src.utils.config import MODELS_DIR, HYPERBOLIC_CONFIG
 import argparse
 
-def train_hyperbolic_embeddings(embedding_dim=None, epochs=None, learning_rate=None):
+def train_hyperbolic_embeddings(embedding_dim=None, epochs=None, learning_rate=None, dataset_prefix=None):
     """
     Train Poincaré (hyperbolic) embeddings on WordNet data.
     
@@ -20,12 +20,22 @@ def train_hyperbolic_embeddings(embedding_dim=None, epochs=None, learning_rate=N
     print("=" * 60)
     
     try:
-        train_edges, test_edges = load_split()
-        node2id, id2node = load_mapping()
+        if dataset_prefix:
+            train_edges, test_edges = load_split(
+                train_file=f"{dataset_prefix}_train_edges.pkl",
+                test_file=f"{dataset_prefix}_test_edges.pkl",
+            )
+            node2id, id2node = load_mapping(
+                node2id_file=f"{dataset_prefix}_node2id.pkl",
+                id2node_file=f"{dataset_prefix}_id2node.pkl",
+            )
+        else:
+            train_edges, test_edges = load_split()
+            node2id, id2node = load_mapping()
     except FileNotFoundError:
         print("Training data not found. Running data preparation...")
         from src.training.trainer import prepare_training_data
-        train_edges, test_edges, node2id, id2node = prepare_training_data()
+        train_edges, test_edges, node2id, id2node = prepare_training_data(dataset_prefix=dataset_prefix)
     
     kwargs = {}
     if embedding_dim:
@@ -39,7 +49,8 @@ def train_hyperbolic_embeddings(embedding_dim=None, epochs=None, learning_rate=N
     
     model.train(train_edges, node2id, id2node)
     
-    model_path = MODELS_DIR / "poincare_embeddings.pkl"
+    model_filename = f"{dataset_prefix}_poincare_embeddings.pkl" if dataset_prefix else "poincare_embeddings.pkl"
+    model_path = MODELS_DIR / model_filename
     model.save(model_path)
     
     print("\n" + "=" * 60)
@@ -54,11 +65,13 @@ if __name__ == "__main__":
     parser.add_argument('--dim', type=int, default=None, help='Embedding dimension')
     parser.add_argument('--epochs', type=int, default=None, help='Number of epochs')
     parser.add_argument('--lr', type=float, default=None, help='Learning rate')
+    parser.add_argument('--dataset-prefix', type=str, default=None, help='Dataset prefix (uses prefixed processed artifacts)')
     
     args = parser.parse_args()
     
     train_hyperbolic_embeddings(
         embedding_dim=args.dim, 
         epochs=args.epochs,
-        learning_rate=args.lr
+        learning_rate=args.lr,
+        dataset_prefix=args.dataset_prefix
     )

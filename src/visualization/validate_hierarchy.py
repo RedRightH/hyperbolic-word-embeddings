@@ -13,8 +13,9 @@ import networkx as nx
 from src.utils.config import MODELS_DIR, FIGURES_DIR
 from src.preprocessing.dataset_utils import load_graph
 from src.utils.distance_metrics import compute_distance_batch
+import argparse
 
-def plot_distance_correlation(model_path, model_type, output_path, max_pairs=200):
+def plot_distance_correlation(model_path, model_type, output_path, max_pairs=200, graph_filename=None):
     """
     Plot correlation between tree distances and embedding distances.
     This directly validates if the embeddings preserve hierarchical structure.
@@ -29,7 +30,7 @@ def plot_distance_correlation(model_path, model_type, output_path, max_pairs=200
     node2id = model_data['node2id']
     
     # Load graph
-    G = load_graph()
+    G = load_graph(graph_filename) if graph_filename else load_graph()
     G_undirected = G.to_undirected()
     
     # Get common nodes
@@ -98,7 +99,7 @@ def plot_distance_correlation(model_path, model_type, output_path, max_pairs=200
     
     return correlation
 
-def plot_parent_child_distances(model_path, model_type, output_path):
+def plot_parent_child_distances(model_path, model_type, output_path, graph_filename=None):
     """
     Plot distribution of distances between parent-child pairs.
     Should show that directly connected nodes are close in embedding space.
@@ -113,7 +114,7 @@ def plot_parent_child_distances(model_path, model_type, output_path):
     node2id = model_data['node2id']
     
     # Load graph
-    G = load_graph()
+    G = load_graph(graph_filename) if graph_filename else load_graph()
     
     metric = 'poincare' if model_type == 'poincare' else 'euclidean'
     
@@ -171,7 +172,7 @@ def plot_parent_child_distances(model_path, model_type, output_path):
     
     return np.mean(parent_child_dists), np.mean(non_connected_dists)
 
-def plot_depth_vs_norm(model_path, model_type, output_path):
+def plot_depth_vs_norm(model_path, model_type, output_path, graph_filename=None):
     """
     For Poincaré: Plot hierarchy depth vs distance from origin.
     Should show that deeper nodes are farther from center.
@@ -186,12 +187,14 @@ def plot_depth_vs_norm(model_path, model_type, output_path):
     node2id = model_data['node2id']
     
     # Load graph
-    G = load_graph()
+    G = load_graph(graph_filename) if graph_filename else load_graph()
     
-    # Find root nodes
-    root_nodes = [node for node in G.nodes() if G.in_degree(node) == 0]
+    root_nodes = [node for node in G.nodes() if G.out_degree(node) == 0]
     if len(root_nodes) == 0:
-        root_nodes = sorted(G.nodes(), key=lambda n: G.out_degree(n), reverse=True)[:5]
+        root_nodes = sorted(G.nodes(), key=lambda n: G.in_degree(n), reverse=True)[:5]
+
+    # For depth computation we want a top-down graph
+    G_topdown = G.reverse(copy=False)
     
     # Compute depth and norm for each node
     depths = []
@@ -204,8 +207,8 @@ def plot_depth_vs_norm(model_path, model_type, output_path):
         min_depth = float('inf')
         for root in root_nodes:
             try:
-                if nx.has_path(G, root, node):
-                    depth = nx.shortest_path_length(G, root, node)
+                if nx.has_path(G_topdown, root, node):
+                    depth = nx.shortest_path_length(G_topdown, root, node)
                     min_depth = min(min_depth, depth)
             except:
                 pass
@@ -347,32 +350,43 @@ def main():
     print("CREATING VALIDATION VISUALIZATIONS")
     print("=" * 70)
     
-    euclidean_path = MODELS_DIR / "euclidean_embeddings.pkl"
-    poincare_path = MODELS_DIR / "poincare_embeddings.pkl"
+    parser = argparse.ArgumentParser(description='Create validation visualizations')
+    parser.add_argument('--dataset-prefix', type=str, default=None, help='Dataset prefix (uses prefixed processed artifacts and models)')
+    args = parser.parse_args()
+
+    dataset_prefix = args.dataset_prefix
+
+    euclidean_filename = f"{dataset_prefix}_euclidean_embeddings.pkl" if dataset_prefix else "euclidean_embeddings.pkl"
+    poincare_filename = f"{dataset_prefix}_poincare_embeddings.pkl" if dataset_prefix else "poincare_embeddings.pkl"
+
+    euclidean_path = MODELS_DIR / euclidean_filename
+    poincare_path = MODELS_DIR / poincare_filename
+
+    graph_filename = f"{dataset_prefix}_graph.pkl" if dataset_prefix else None
     
     # 1. Distance correlation plots
-    euc_corr_path = FIGURES_DIR / "validation_euclidean_correlation.png"
-    poi_corr_path = FIGURES_DIR / "validation_poincare_correlation.png"
+    euc_corr_path = FIGURES_DIR / (f"{dataset_prefix}_validation_euclidean_correlation.png" if dataset_prefix else "validation_euclidean_correlation.png")
+    poi_corr_path = FIGURES_DIR / (f"{dataset_prefix}_validation_poincare_correlation.png" if dataset_prefix else "validation_poincare_correlation.png")
     
-    euc_corr = plot_distance_correlation(euclidean_path, 'euclidean', euc_corr_path)
-    poi_corr = plot_distance_correlation(poincare_path, 'poincare', poi_corr_path)
+    euc_corr = plot_distance_correlation(euclidean_path, 'euclidean', euc_corr_path, graph_filename=graph_filename)
+    poi_corr = plot_distance_correlation(poincare_path, 'poincare', poi_corr_path, graph_filename=graph_filename)
     
     # 2. Parent-child distance distributions
-    euc_pc_path = FIGURES_DIR / "validation_euclidean_parent_child.png"
-    poi_pc_path = FIGURES_DIR / "validation_poincare_parent_child.png"
+    euc_pc_path = FIGURES_DIR / (f"{dataset_prefix}_validation_euclidean_parent_child.png" if dataset_prefix else "validation_euclidean_parent_child.png")
+    poi_pc_path = FIGURES_DIR / (f"{dataset_prefix}_validation_poincare_parent_child.png" if dataset_prefix else "validation_poincare_parent_child.png")
     
-    euc_pc_mean, euc_nc_mean = plot_parent_child_distances(euclidean_path, 'euclidean', euc_pc_path)
-    poi_pc_mean, poi_nc_mean = plot_parent_child_distances(poincare_path, 'poincare', poi_pc_path)
+    euc_pc_mean, euc_nc_mean = plot_parent_child_distances(euclidean_path, 'euclidean', euc_pc_path, graph_filename=graph_filename)
+    poi_pc_mean, poi_nc_mean = plot_parent_child_distances(poincare_path, 'poincare', poi_pc_path, graph_filename=graph_filename)
     
     # 3. Depth vs norm plots
-    euc_depth_path = FIGURES_DIR / "validation_euclidean_depth_norm.png"
-    poi_depth_path = FIGURES_DIR / "validation_poincare_depth_norm.png"
+    euc_depth_path = FIGURES_DIR / (f"{dataset_prefix}_validation_euclidean_depth_norm.png" if dataset_prefix else "validation_euclidean_depth_norm.png")
+    poi_depth_path = FIGURES_DIR / (f"{dataset_prefix}_validation_poincare_depth_norm.png" if dataset_prefix else "validation_poincare_depth_norm.png")
     
-    plot_depth_vs_norm(euclidean_path, 'euclidean', euc_depth_path)
-    plot_depth_vs_norm(poincare_path, 'poincare', poi_depth_path)
+    plot_depth_vs_norm(euclidean_path, 'euclidean', euc_depth_path, graph_filename=graph_filename)
+    plot_depth_vs_norm(poincare_path, 'poincare', poi_depth_path, graph_filename=graph_filename)
     
     # 4. Comparison summary
-    summary_path = FIGURES_DIR / "validation_comparison_summary.png"
+    summary_path = FIGURES_DIR / (f"{dataset_prefix}_validation_comparison_summary.png" if dataset_prefix else "validation_comparison_summary.png")
     create_comparison_summary(euclidean_path, poincare_path, summary_path)
     
     # Print summary

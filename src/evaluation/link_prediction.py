@@ -9,6 +9,7 @@ from src.utils.config import MODELS_DIR, TABLES_DIR
 from src.utils.distance_metrics import compute_distance_batch
 from src.evaluation.metrics import compute_rank_metrics
 from tqdm import tqdm
+import argparse
 
 def evaluate_link_prediction(model_path, test_edges, node2id, model_type='euclidean', max_test=1000):
     """
@@ -85,7 +86,7 @@ def evaluate_link_prediction(model_path, test_edges, node2id, model_type='euclid
     
     return metrics
 
-def compare_link_prediction():
+def compare_link_prediction(dataset_prefix=None):
     """
     Compare link prediction performance between Euclidean and Poincaré models.
     """
@@ -94,14 +95,26 @@ def compare_link_prediction():
     print("=" * 60)
     
     try:
-        train_edges, test_edges = load_split()
-        node2id, id2node = load_mapping()
+        if dataset_prefix:
+            train_edges, test_edges = load_split(
+                train_file=f"{dataset_prefix}_train_edges.pkl",
+                test_file=f"{dataset_prefix}_test_edges.pkl",
+            )
+            node2id, id2node = load_mapping(
+                node2id_file=f"{dataset_prefix}_node2id.pkl",
+                id2node_file=f"{dataset_prefix}_id2node.pkl",
+            )
+        else:
+            train_edges, test_edges = load_split()
+            node2id, id2node = load_mapping()
     except FileNotFoundError:
         print("Training data not found. Please run training first.")
         return
-    
-    euclidean_path = MODELS_DIR / "euclidean_embeddings.pkl"
-    poincare_path = MODELS_DIR / "poincare_embeddings.pkl"
+
+    euclidean_filename = f"{dataset_prefix}_euclidean_embeddings.pkl" if dataset_prefix else "euclidean_embeddings.pkl"
+    poincare_filename = f"{dataset_prefix}_poincare_embeddings.pkl" if dataset_prefix else "poincare_embeddings.pkl"
+    euclidean_path = MODELS_DIR / euclidean_filename
+    poincare_path = MODELS_DIR / poincare_filename
     
     results = {}
     
@@ -123,7 +136,8 @@ def compare_link_prediction():
     else:
         print(f"Poincaré model not found: {poincare_path}")
     
-    output_path = TABLES_DIR / "link_prediction.json"
+    output_filename = f"{dataset_prefix}_link_prediction.json" if dataset_prefix else "link_prediction.json"
+    output_path = TABLES_DIR / output_filename
     with open(output_path, 'w') as f:
         json.dump(results, f, indent=2)
     
@@ -151,4 +165,8 @@ def compare_link_prediction():
     return results
 
 if __name__ == "__main__":
-    compare_link_prediction()
+    parser = argparse.ArgumentParser(description='Compare link prediction performance')
+    parser.add_argument('--dataset-prefix', type=str, default=None, help='Dataset prefix (uses prefixed processed artifacts and models)')
+    args = parser.parse_args()
+
+    compare_link_prediction(dataset_prefix=args.dataset_prefix)
